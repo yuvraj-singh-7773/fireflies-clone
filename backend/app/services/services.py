@@ -8,12 +8,13 @@ from app.repositories.repositories import (
     TranscriptRepository, SummaryRepository, ActionItemRepository, ChapterRepository,
     HighlightRepository, CommentRepository,
 )
+from app.models.models import Participant
 from app.schemas.schemas import (
     MeetingCreate, MeetingUpdate, TagCreate, TranscriptSegmentCreate,
     SummaryCreate, ActionItemCreate, ActionItemUpdate, ChapterCreate, ChapterUpdate,
     HighlightCreate, CommentCreate, RegisterRequest, LoginRequest,
 )
-from app.security import hash_password, verify_password, create_access_token
+from app.security import hash_password, verify_password, create_access_token, revoke_access_token
 from fastapi import HTTPException
 
 def require_meeting_access(meeting_repo: MeetingRepository, meeting_id: str, user_id: str):
@@ -60,6 +61,9 @@ class AuthService:
             "user": user,
         }
 
+    def logout(self, token: str):
+        revoke_access_token(self.session, token)
+
 
 class MeetingService:
     def __init__(self, session: Session):
@@ -98,8 +102,8 @@ class MeetingService:
 
     def global_search(self, query: str, page: int, size: int, owner_id: str):
         """
-        Unified global search across meeting titles, participant names, and transcript text.
-        Returns paginated meeting hits (title/participant match) and transcript hits (text match).
+        Unified global search across meeting titles and transcript text.
+        Returns paginated meeting-title hits and transcript-text hits.
         """
         query = query.strip()
         if not query:
@@ -145,7 +149,14 @@ class MeetingService:
 
     def update_meeting(self, meeting_id: str, data: MeetingUpdate, user_id: str):
         meeting = self.get_meeting(meeting_id, user_id)
-        self.repo.update(meeting, **data.model_dump(exclude_unset=True))
+        payload = data.model_dump(exclude_unset=True)
+        participants = payload.pop("participants", None)
+        self.repo.update(meeting, **payload)
+        if participants is not None:
+            meeting.participants.clear()
+            self.session.flush()
+            for participant in participants:
+                meeting.participants.append(Participant(**participant))
         self.session.commit()
         return self.get_meeting(meeting.id, user_id)
 

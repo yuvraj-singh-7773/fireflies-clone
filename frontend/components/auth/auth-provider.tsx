@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/api/auth';
+import { getCurrentUser, logout as revokeSession } from '@/lib/api/auth';
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/lib/api/client';
 import { User } from '@/types';
 
@@ -10,7 +10,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   completeLogin: (token: string, user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,10 +20,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const logout = useCallback(() => {
-    clearAccessToken();
-    setUser(null);
-    router.replace('/login');
+  const logout = useCallback(async () => {
+    try {
+      await revokeSession();
+    } catch {
+      // Local state must still be cleared if the network is unavailable.
+    } finally {
+      clearAccessToken();
+      setUser(null);
+      router.replace('/login');
+    }
   }, [router]);
 
   const completeLogin = useCallback((token: string, authenticatedUser: User) => {

@@ -1,5 +1,14 @@
+import os
+import tempfile
 import uuid
 from httpx import AsyncClient
+
+# Keep the suite isolated from a developer's SQLite file and make tests
+# repeatable without modifying real local data.
+TEST_DATABASE = os.path.join(tempfile.gettempdir(), f"firefiles-tests-{uuid.uuid4().hex}.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE.replace(os.sep, '/')}"
+os.environ.setdefault("CORS_ORIGINS", '["http://testserver"]')
+os.environ["JWT_SECRET"] = "test-only-secret-with-at-least-thirty-two-characters"
 
 import app.models  # noqa: F401 — register SQLAlchemy models on Base
 from app.database import init_db

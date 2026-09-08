@@ -322,6 +322,8 @@ Register an account at `/register`, then sign in at `/login`.
 
 > **Security:** Never commit `.env` files. Never use the dev JWT fallback in production. The backend validates these rules when `ENVIRONMENT=production` and will refuse to start if they are violated.
 
+> **Legacy SQLite upgrade:** If an older local database has meetings without an owner, startup preserves and quarantines them under a non-loginable legacy archive account before enforcing the required ownership constraint. No arbitrary user receives access to those records.
+
 ---
 
 ## Development Commands
@@ -412,7 +414,7 @@ npm run build    # Must complete successfully
 3. **SQLite for persistence** — Suitable for development and demonstration. The application uses SQLAlchemy, making migration to PostgreSQL a configuration change.
 4. **Single-user ownership model** — Meetings belong to one owner. There is no sharing or team collaboration model beyond comments.
 5. **No email verification** — Registration does not verify email addresses.
-6. **Token-based auth only** — JWT stored in localStorage; no HTTP-only cookie or refresh token flow.
+6. **Token-based auth only** — JWT is stored in localStorage for this assignment; server-side revocation protects logout, but a production system should prefer HTTP-only cookies and refresh-token rotation.
 
 ---
 
@@ -451,3 +453,4 @@ npm run build    # Must complete successfully
 | [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) | Setup guide, scripts, troubleshooting |
 | [`DECISIONS.md`](./DECISIONS.md) | Architecture Decision Records (ADRs) |
 | [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) | Milestone tracking and current status |
+Authentication uses short-lived bearer JWTs stored by the frontend for this assignment. Each token has a unique ID; `POST /api/auth/logout` persists its revocation until expiry, so a logged-out token immediately receives `401`. The frontend always clears local state on logout or a `401`. JWT secrets are backend-only and production startup requires a strong configured secret.

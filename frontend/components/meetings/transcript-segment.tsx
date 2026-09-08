@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TranscriptComment, TranscriptSegment as SegmentType } from '@/types';
+import { TranscriptComment, TranscriptHighlight, TranscriptSegment as SegmentType } from '@/types';
 import { formatTime } from './media-player';
 import { PlayIcon } from '../ui/icons';
 import { TranscriptComments } from './transcript-comments';
@@ -21,6 +21,9 @@ interface TranscriptSegmentProps {
   onCloseComposer: () => void;
   onSubmitComment: (text: string, authorName: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
+  highlight?: TranscriptHighlight;
+  isHighlightBusy: boolean;
+  onToggleHighlight: () => Promise<void>;
 }
 
 const SPEAKER_COLORS = [
@@ -119,6 +122,9 @@ export const TranscriptSegmentItem: React.FC<TranscriptSegmentProps> = ({
   onCloseComposer,
   onSubmitComment,
   onDeleteComment,
+  highlight,
+  isHighlightBusy,
+  onToggleHighlight,
 }) => {
   const startSeconds = segment.start_ms / 1000;
   const timeFormatted = formatTime(startSeconds);
@@ -131,6 +137,8 @@ export const TranscriptSegmentItem: React.FC<TranscriptSegmentProps> = ({
       className={`group relative rounded-xl transition-all duration-200 p-3 sm:p-4 select-text border ${
         isActive
           ? 'bg-violet-950/30 border-violet-500/50 shadow-md shadow-violet-500/5 ring-1 ring-violet-500/30'
+          : highlight
+          ? 'bg-amber-500/10 border-amber-400/50'
           : isCurrentMatchSegment
           ? 'bg-amber-950/20 border-amber-500/40'
           : 'bg-zinc-900/40 hover:bg-zinc-900/90 border-zinc-800/60 hover:border-zinc-700/80'
@@ -186,6 +194,16 @@ export const TranscriptSegmentItem: React.FC<TranscriptSegmentProps> = ({
           </p>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => void onToggleHighlight()}
+        disabled={isHighlightBusy}
+        aria-label={highlight ? 'Remove transcript highlight' : 'Highlight transcript segment'}
+        className={`mt-2 text-[11px] font-medium rounded px-2 py-1 border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${highlight ? 'text-amber-200 border-amber-400/40 bg-amber-500/10' : 'text-zinc-500 border-zinc-800 hover:text-amber-200 hover:border-amber-400/40'} disabled:opacity-50`}
+      >
+        {isHighlightBusy ? 'Saving…' : highlight ? 'Highlighted' : 'Highlight'}
+      </button>
 
       <TranscriptComments
         comments={comments}

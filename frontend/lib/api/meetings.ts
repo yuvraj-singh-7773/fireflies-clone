@@ -15,6 +15,8 @@ import {
   SummaryCreateInput,
   TranscriptComment,
   TranscriptCommentCreateInput,
+  TranscriptHighlight,
+  MeetingUpdateInput,
 } from '@/types';
 
 export async function getMeetings(params: MeetingQueryParams = {}): Promise<MeetingListResponse> {
@@ -40,7 +42,7 @@ export async function createMeeting(data: MeetingCreateInput): Promise<MeetingDe
   return post<MeetingDetail>('/api/meetings', data);
 }
 
-export async function updateMeeting(id: string, data: Partial<MeetingCreateInput>): Promise<MeetingDetail> {
+export async function updateMeeting(id: string, data: MeetingUpdateInput): Promise<MeetingDetail> {
   return put<MeetingDetail>(`/api/meetings/${encodeURIComponent(id)}`, data);
 }
 
@@ -99,4 +101,16 @@ export async function deleteComment(id: string, commentId: string): Promise<void
   return del<void>(
     `/api/meetings/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}`
   );
+}
+
+export async function getHighlights(id: string): Promise<TranscriptHighlight[]> {
+  return get<TranscriptHighlight[]>(`/api/meetings/${encodeURIComponent(id)}/highlights`);
+}
+
+export async function createHighlight(id: string, segmentId: string): Promise<TranscriptHighlight> {
+  return post<TranscriptHighlight>(`/api/meetings/${encodeURIComponent(id)}/highlights`, { segment_id: segmentId });
+}
+
+export async function deleteHighlight(id: string, highlightId: string): Promise<void> {
+  return del<void>(`/api/meetings/${encodeURIComponent(id)}/highlights/${encodeURIComponent(highlightId)}`);
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { TranscriptSegment as SegmentType, Participant, TranscriptComment } from '@/types';
+import { TranscriptSegment as SegmentType, Participant, TranscriptComment, TranscriptHighlight } from '@/types';
 import { TranscriptSearch } from './transcript-search';
 import { TranscriptSegmentItem } from './transcript-segment';
 import { DocumentTextIcon, ArrowPathIcon } from '../ui/icons';
@@ -20,6 +20,12 @@ interface TranscriptViewerProps {
   commentsError?: string | null;
   onCommentsChange: React.Dispatch<React.SetStateAction<TranscriptComment[]>>;
   onRetryComments: () => void;
+  highlights: TranscriptHighlight[];
+  highlightBusySegmentId: string | null;
+  onToggleHighlight: (segmentId: string) => Promise<void>;
+  highlightsLoading?: boolean;
+  highlightsError?: string | null;
+  onRetryHighlights: () => void;
 }
 
 interface SearchMatch {
@@ -39,6 +45,12 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   commentsError = null,
   onCommentsChange,
   onRetryComments,
+  highlights,
+  highlightBusySegmentId,
+  onToggleHighlight,
+  highlightsLoading = false,
+  highlightsError = null,
+  onRetryHighlights,
 }) => {
   const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
@@ -158,6 +170,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
     });
     return map;
   }, [comments]);
+  const highlightsBySegment = useMemo(() => new Map(highlights.map((highlight) => [highlight.segment_id, highlight])), [highlights]);
 
   const handleSubmitComment = async (segmentId: string, text: string, authorName: string) => {
     setSubmittingSegmentId(segmentId);
@@ -218,6 +231,14 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                 {comments.length} comment{comments.length === 1 ? '' : 's'}
               </span>
             )}
+            {highlightsLoading ? (
+              <span className="text-[11px] text-zinc-500">Loading highlights…</span>
+            ) : highlightsError ? (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-rose-400" role="alert">
+                Highlights unavailable
+                <button type="button" onClick={onRetryHighlights} className="font-semibold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 rounded">Retry</button>
+              </span>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
@@ -292,6 +313,9 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                   handleSubmitComment(segment.id, text, authorName)
                 }
                 onDeleteComment={handleDeleteComment}
+                highlight={highlightsBySegment.get(segment.id)}
+                isHighlightBusy={highlightBusySegmentId === segment.id}
+                onToggleHighlight={() => onToggleHighlight(segment.id)}
               />
             );
           })

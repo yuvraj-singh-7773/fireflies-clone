@@ -34,6 +34,18 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
     
     meetings: Mapped[List["Meeting"]] = relationship("Meeting", back_populates="owner")
+    revoked_tokens: Mapped[List["RevokedToken"]] = relationship("RevokedToken", back_populates="user", cascade="all, delete-orphan")
+
+
+class RevokedToken(Base):
+    """Persisted JWT revocations, removed opportunistically after expiry."""
+    __tablename__ = "revoked_tokens"
+    jti: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    revoked_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+
+    user: Mapped["User"] = relationship("User", back_populates="revoked_tokens")
 
 class Meeting(Base):
     __tablename__ = "meetings"
@@ -43,7 +55,7 @@ class Meeting(Base):
     duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     audio_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     status: Mapped[MeetingStatus] = mapped_column(Enum(MeetingStatus), default=MeetingStatus.done)
-    owner_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 

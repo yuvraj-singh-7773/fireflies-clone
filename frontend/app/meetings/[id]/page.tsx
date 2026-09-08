@@ -10,8 +10,12 @@ import {
   getSummary,
   getActionItems,
   getComments,
+  getHighlights,
+  createHighlight,
+  deleteHighlight,
 } from '@/lib/api/meetings';
-import { MeetingDetail, TranscriptSegment, Chapter, Summary, ActionItem, TranscriptComment } from '@/types';
+import { ApiError } from '@/lib/api/client';
+import { MeetingDetail, TranscriptSegment, Chapter, Summary, ActionItem, TranscriptComment, TranscriptHighlight } from '@/types';
 import { MeetingHeader } from '@/components/meetings/meeting-header';
 import { MediaPlayer } from '@/components/meetings/media-player';
 import { TranscriptViewer } from '@/components/meetings/transcript-viewer';
@@ -24,6 +28,8 @@ import {
   ChevronLeftIcon,
 } from '@/components/ui/icons';
 import { RequireAuth } from '@/components/auth/require-auth';
+import { CreateMeetingModal } from '@/components/meetings/create-meeting-modal';
+import { useToast } from '@/components/ui/toast';
 
 export default function MeetingDetailPage() {
   const params = useParams();
@@ -36,16 +42,24 @@ export default function MeetingDetailPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [comments, setComments] = useState<TranscriptComment[]>([]);
+  const [highlights, setHighlights] = useState<TranscriptHighlight[]>([]);
+  const [highlightsLoading, setHighlightsLoading] = useState(true);
+  const [highlightsError, setHighlightsError] = useState<string | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [intelligenceLoading, setIntelligenceLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [highlightBusySegmentId, setHighlightBusySegmentId] = useState<string | null>(null);
 
   // Player state
   const [currentTime, setCurrentTime] = useState(0); // in seconds
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [mediaDuration, setMediaDuration] = useState<number | null>(null);
+  const { showToast } = useToast();
 
   // Animation frame / interval reference for smooth media timer
   const lastTickRef = useRef<number | null>(null);
@@ -56,6 +70,7 @@ export default function MeetingDetailPage() {
     try {
       setLoading(true);
       setError(null);
+      setNotFound(false);
 
       // Load meeting detail
       const m = await getMeetingById(id);
@@ -104,6 +119,7 @@ export default function MeetingDetailPage() {
       setSummary(resolvedSummary);
       setActionItems(resolvedActionItems || []);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 404) setNotFound(true);
       setError(err instanceof Error ? err.message : 'Failed to load meeting details');
     } finally {
       setLoading(false);
@@ -129,12 +145,30 @@ export default function MeetingDetailPage() {
     }
   }, [id]);
 
+  const loadHighlights = useCallback(async () => {
+    if (!id) return;
+    setHighlightsLoading(true);
+    setHighlightsError(null);
+    try {
+      setHighlights(await getHighlights(id));
+    } catch (err) {
+      setHighlights([]);
+      setHighlightsError(err instanceof Error ? err.message : 'Failed to load highlights');
+    } finally {
+      setHighlightsLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     void loadComments();
   }, [loadComments]);
 
+  useEffect(() => {
+    void loadHighlights();
+  }, [loadHighlights]);
+
   // Compute total duration in seconds
-  const totalDuration = React.useMemo(() => {
+  const fallbackDuration = React.useMemo(() => {
     if (meeting?.duration_sec && meeting.duration_sec > 0) {
       return meeting.duration_sec;
     }
@@ -150,10 +184,12 @@ export default function MeetingDetailPage() {
     }
     return 600; // 10 minutes default
   }, [meeting, segments, chapters]);
+  const totalDuration = mediaDuration && mediaDuration > 0 ? mediaDuration : fallbackDuration;
+  const hasRealMedia = Boolean(meeting?.audio_url);
 
   // Media Clock / Playback loop
   useEffect(() => {
-    if (!isPlaying) {
+    if (!isPlaying || hasRealMedia) {
       lastTickRef.current = null;
       return;
     }
@@ -177,7 +213,7 @@ export default function MeetingDetailPage() {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPlaying, playbackRate, totalDuration]);
+  }, [hasRealMedia, isPlaying, playbackRate, totalDuration]);
 
   // Player controls
   const handlePlayPause = () => {
@@ -193,6 +229,27 @@ export default function MeetingDetailPage() {
     setIsPlaying(true);
   };
 
+  const handleToggleHighlight = async (segmentId: string) => {
+    if (!id) return;
+    setHighlightBusySegmentId(segmentId);
+    try {
+      const existing = highlights.find((highlight) => highlight.segment_id === segmentId);
+      if (existing) {
+        await deleteHighlight(id, existing.id);
+        setHighlights((current) => current.filter((highlight) => highlight.id !== existing.id));
+        showToast('Highlight removed', 'info');
+      } else {
+        const created = await createHighlight(id, segmentId);
+        setHighlights((current) => [...current, created]);
+        showToast('Transcript highlighted', 'success');
+      }
+    } catch {
+      showToast('Failed to update highlight', 'error');
+    } finally {
+      setHighlightBusySegmentId(null);
+    }
+  };
+
   return <RequireAuth>
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200">
       {/* Loading state */}
@@ -200,6 +257,14 @@ export default function MeetingDetailPage() {
         <div className="flex-1 flex flex-col items-center justify-center p-12 space-y-3">
           <ArrowPathIcon className="w-8 h-8 animate-spin text-violet-400" />
           <p className="text-sm font-medium text-zinc-400">Loading meeting workspace...</p>
+        </div>
+      ) : notFound ? (
+        <div className="flex-1 grid place-items-center p-6">
+          <div className="max-w-md text-center space-y-4">
+            <h2 className="text-lg font-bold text-white">Meeting not found</h2>
+            <p className="text-sm text-zinc-400">This meeting does not exist or is not available in your workspace.</p>
+            <Link href="/" className="inline-flex px-3.5 py-2 rounded-lg bg-zinc-900 text-xs font-semibold text-zinc-200 border border-zinc-800">Back to Meetings</Link>
+          </div>
         </div>
       ) : error ? (
         /* Error state */
@@ -250,6 +315,9 @@ export default function MeetingDetailPage() {
                 playbackRate={playbackRate}
                 onPlaybackRateChange={setPlaybackRate}
                 audioUrl={meeting.audio_url}
+                onCurrentTimeChange={setCurrentTime}
+                onDurationChange={setMediaDuration}
+                onPlayingChange={setIsPlaying}
               />
             </section>
 
@@ -272,6 +340,12 @@ export default function MeetingDetailPage() {
                   commentsError={commentsError}
                   onCommentsChange={setComments}
                   onRetryComments={loadComments}
+                  highlights={highlights}
+                  highlightBusySegmentId={highlightBusySegmentId}
+                  onToggleHighlight={handleToggleHighlight}
+                  highlightsLoading={highlightsLoading}
+                  highlightsError={highlightsError}
+                  onRetryHighlights={loadHighlights}
                 />
               </section>
 
@@ -281,13 +355,7 @@ export default function MeetingDetailPage() {
                 className="lg:col-span-5 xl:col-span-4 space-y-5"
               >
                 {/* Chapter Navigation */}
-                {chapters.length > 0 && (
-                  <ChapterNavigation
-                    chapters={chapters}
-                    currentTime={currentTime}
-                    onSeek={handleSeek}
-                  />
-                )}
+                <ChapterNavigation chapters={chapters} currentTime={currentTime} onSeek={handleSeek} />
 
                 {/* AI Summary */}
                 <MeetingSummary summary={summary} isLoading={intelligenceLoading} />
@@ -340,6 +408,14 @@ export default function MeetingDetailPage() {
               </aside>
             </div>
           </main>
+          <button onClick={() => setIsEditOpen(true)} className="fixed bottom-5 right-5 px-4 py-2 rounded-lg bg-violet-600 text-xs font-semibold text-white shadow-lg hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-400">Edit meeting</button>
+          <CreateMeetingModal
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            onMeetingCreated={() => undefined}
+            meeting={meeting}
+            onMeetingUpdated={(updated) => setMeeting(updated)}
+          />
         </>
       ) : null}
     </div>

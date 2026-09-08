@@ -2,6 +2,10 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from tests.conftest import auth_headers
+from sqlalchemy.exc import IntegrityError
+from app.database import SessionLocal
+from app.models.models import Meeting
+from datetime import datetime, timezone
 
 @pytest.mark.asyncio
 async def test_health():
@@ -68,6 +72,9 @@ async def test_update_delete_meeting():
         resp = await ac.put(f"/api/meetings/{m_id}", json={"title": "Updated Title"}, headers=headers)
         assert resp.status_code == 200
         assert resp.json()["title"] == "Updated Title"
+        resp = await ac.put(f"/api/meetings/{m_id}", json={"participants": [{"name": "Edited Participant"}]}, headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["participants"][0]["name"] == "Edited Participant"
         # Delete
         resp = await ac.delete(f"/api/meetings/{m_id}", headers=headers)
         assert resp.status_code == 204
@@ -210,3 +217,39 @@ async def test_authentication_and_meeting_ownership():
             f"/api/meetings/{meeting_id}/highlights",
         ):
             assert (await ac.get(path, headers=other_headers)).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_logout_revokes_only_current_token():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        first_headers = await auth_headers(ac)
+        second_headers = await auth_headers(ac)
+        assert (await ac.get("/api/meetings", headers=first_headers)).status_code == 200
+        assert (await ac.post("/api/auth/logout", headers=first_headers)).status_code == 204
+        assert (await ac.get("/api/meetings", headers=first_headers)).status_code == 401
+        assert (await ac.get("/api/meetings", headers=second_headers)).status_code == 200
+        assert (await ac.get("/api/meetings", headers={"Authorization": "Bearer invalid"})).status_code == 401
+
+
+def test_ownerless_meeting_is_rejected_by_database():
+    db = SessionLocal()
+    try:
+        db.add(Meeting(title="Ownerless", date=datetime.now(timezone.utc), owner_id=None))
+        with pytest.raises(IntegrityError):
+            db.commit()
+    finally:
+        db.rollback()
+        db.close()
+
+
+@pytest.mark.asyncio
+async def test_highlight_persistence_and_deletion():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        headers = await auth_headers(ac)
+        meeting = await ac.post("/api/meetings", json={"title": "Highlight Test", "date": "2023-10-10T10:00:00Z"}, headers=headers)
+        meeting_id = meeting.json()["id"]
+        segment = await ac.post(f"/api/meetings/{meeting_id}/transcript", json={"text": "Highlight this", "start_ms": 0, "end_ms": 1000, "sequence": 0}, headers=headers)
+        highlight = await ac.post(f"/api/meetings/{meeting_id}/highlights", json={"segment_id": segment.json()["id"]}, headers=headers)
+        assert highlight.status_code == 201
+        assert len((await ac.get(f"/api/meetings/{meeting_id}/highlights", headers=headers)).json()) == 1
+        assert (await ac.delete(f"/api/meetings/{meeting_id}/highlights/{highlight.json()['id']}", headers=headers)).status_code == 204

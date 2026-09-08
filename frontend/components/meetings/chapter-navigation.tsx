@@ -17,7 +17,11 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
   onSeek,
 }) => {
   if (!chapters || chapters.length === 0) {
-    return null;
+    return (
+      <div className="rounded-2xl bg-zinc-900/50 border border-zinc-800/80 p-4 text-center">
+        <p className="text-xs text-zinc-500">No chapters available.</p>
+      </div>
+    );
   }
 
   const currentMs = currentTime * 1000;

@@ -109,6 +109,7 @@ class MeetingUpdate(BaseModel):
     duration_sec: Optional[int] = None
     audio_url: Optional[str] = None
     status: Optional[MeetingStatus] = None
+    participants: Optional[List[ParticipantCreate]] = None
 
 class MeetingOut(MeetingBase):
     id: str

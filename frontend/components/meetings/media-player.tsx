@@ -19,6 +19,9 @@ interface MediaPlayerProps {
   playbackRate: number;
   onPlaybackRateChange: (rate: number) => void;
   audioUrl?: string | null;
+  onCurrentTimeChange: (time: number) => void;
+  onDurationChange: (duration: number | null) => void;
+  onPlayingChange: (isPlaying: boolean) => void;
 }
 
 export function formatTime(seconds: number): string {
@@ -44,6 +47,9 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   playbackRate,
   onPlaybackRateChange,
   audioUrl,
+  onCurrentTimeChange,
+  onDurationChange,
+  onPlayingChange,
 }) => {
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
@@ -80,14 +86,12 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   useEffect(() => {
     if (audioRef.current) {
       if (isPlaying) {
-        audioRef.current.play().catch(() => {
-          // Ignore autoplay / decode errors gracefully
-        });
+        audioRef.current.play().catch(() => onPlayingChange(false));
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, onPlayingChange]);
 
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
@@ -119,7 +123,11 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
           ref={audioRef}
           src={audioUrl}
           preload="metadata"
-          onEnded={() => onPlayPause()}
+          onTimeUpdate={(event) => onCurrentTimeChange(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => onDurationChange(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : null)}
+          onPlay={() => onPlayingChange(true)}
+          onPause={() => onPlayingChange(false)}
+          onEnded={() => onPlayingChange(false)}
         />
       )}
 

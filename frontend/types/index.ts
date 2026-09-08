@@ -83,6 +83,13 @@ export interface TranscriptComment {
   created_at: string;
 }
 
+export interface TranscriptHighlight {
+  id: string;
+  meeting_id: string;
+  segment_id: string;
+  created_at: string;
+}
+
 export interface TranscriptCommentCreateInput {
   segment_id: string;
   text: string;
@@ -136,7 +143,16 @@ export interface MeetingCreateInput {
   duration_sec?: number | null;
   audio_url?: string | null;
   status?: MeetingStatus;
-  owner_id?: string | null;
+}
+
+export interface ParticipantInput {
+  name: string;
+  email?: string | null;
+  speaker_id?: string | null;
+}
+
+export interface MeetingUpdateInput extends Partial<MeetingCreateInput> {
+  participants?: ParticipantInput[];
 }
 
 export interface ActionItemCreateInput {
