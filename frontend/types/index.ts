@@ -135,6 +135,7 @@ export interface MeetingQueryParams {
   date_from?: string;
   date_to?: string;
   sort?: MeetingSortOption;
+  tag_id?: string;
 }
 
 export interface MeetingCreateInput {

@@ -15,10 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased selection:bg-violet-500/30 selection:text-violet-200">
+      <body className="antialiased selection:bg-violet-500/30 selection:text-violet-200">
         <ToastProvider>
           <AuthProvider>
-            <div className="min-h-screen bg-zinc-950 text-white">{children}</div>
+            <div className="min-h-screen">{children}</div>
           </AuthProvider>
         </ToastProvider>
       </body>

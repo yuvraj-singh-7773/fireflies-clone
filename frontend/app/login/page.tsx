@@ -14,10 +14,10 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const next = searchParams.get('next') || '/';
+  const next = searchParams.get('next') || '/dashboard';
 
   useEffect(() => {
-    if (!isLoading && user) router.replace(next.startsWith('/') ? next : '/');
+    if (!isLoading && user) router.replace(next.startsWith('/') ? next : '/dashboard');
   }, [isLoading, next, router, user]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -26,7 +26,7 @@ function LoginForm() {
     try {
       const result = await login({ email, password });
       completeLogin(result.access_token, result.user);
-      router.replace(next.startsWith('/') ? next : '/');
+      router.replace(next.startsWith('/') ? next : '/dashboard');
     } catch { setError('Unable to sign in with those credentials.'); }
     finally { setSubmitting(false); }
   }

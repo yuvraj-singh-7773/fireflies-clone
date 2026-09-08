@@ -22,7 +22,7 @@ export default function RegisterPage() {
     try {
       const result = await register({ display_name: displayName, email, password });
       completeLogin(result.access_token, result.user);
-      router.replace('/');
+      router.replace('/dashboard');
     } catch { setError('Unable to create your account. Try a different email.'); }
     finally { setSubmitting(false); }
   }

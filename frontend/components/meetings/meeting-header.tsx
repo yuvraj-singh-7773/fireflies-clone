@@ -10,7 +10,6 @@ import {
   ClockIcon,
   ClipboardIcon,
   CheckCircleIcon,
-  FlameIcon,
 } from '../ui/icons';
 import { useToast } from '../ui/toast';
 
@@ -77,7 +76,7 @@ export const MeetingHeader: React.FC<MeetingHeaderProps> = ({ meeting }) => {
         {/* Top navigation row */}
         <div className="flex items-center justify-between">
           <Link
-            href="/"
+            href="/dashboard"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-zinc-900 border border-zinc-800/80 transition-colors group"
           >
             <ChevronLeftIcon className="w-4 h-4 text-zinc-400 group-hover:-translate-x-0.5 transition-transform" />

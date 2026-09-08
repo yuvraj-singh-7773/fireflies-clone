@@ -28,6 +28,7 @@ export async function getMeetings(params: MeetingQueryParams = {}): Promise<Meet
   if (params.date_from) query.set('date_from', params.date_from);
   if (params.date_to) query.set('date_to', params.date_to);
   if (params.sort) query.set('sort', params.sort);
+  if (params.tag_id) query.set('tag_id', params.tag_id);
 
   const qs = query.toString();
   const endpoint = `/api/meetings${qs ? `?${qs}` : ''}`;

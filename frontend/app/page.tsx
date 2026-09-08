@@ -1,324 +1,71 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getMeetings, deleteMeeting } from '@/lib/api/meetings';
-import { checkHealth } from '@/lib/api/health';
-import { Meeting, MeetingSortOption } from '@/types';
-import { Sidebar } from '@/components/layout/sidebar';
-import { Header } from '@/components/layout/header';
-import { MeetingFilters, DatePreset } from '@/components/meetings/meeting-filters';
-import { MeetingList } from '@/components/meetings/meeting-list';
-import { MeetingLoadingSkeleton } from '@/components/meetings/loading-skeleton';
-import { MeetingEmptyState } from '@/components/meetings/empty-state';
-import { MeetingErrorState } from '@/components/meetings/error-state';
-import { CreateMeetingModal } from '@/components/meetings/create-meeting-modal';
-import { useToast } from '@/components/ui/toast';
-import { SparklesIcon, ClockIcon, UsersIcon, FolderIcon, PlusIcon } from '@/components/ui/icons';
-import { RequireAuth } from '@/components/auth/require-auth';
+import Link from 'next/link';
+import { useState } from 'react';
+import {
+  ArrowRight, BarChart3, Check, ChevronDown, CircleUserRound, Database,
+  Download, Globe2, Hash, LockKeyhole, Menu, MessageCircle, Mic2,
+  Monitor, MoreHorizontal, Plus, Radio, Search, Share2, ShieldCheck,
+  SlidersHorizontal, Smartphone, Sparkles, Upload, UsersRound, X, Zap,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-export default function DashboardPage() {
-  const { showToast } = useToast();
+const integrations: Array<[string, string, LucideIcon]> = [
+  ['CRM', 'Auto-fill your CRM with notes and call logs.', Globe2],
+  ['Project Management', 'Create tasks automatically after every meeting.', Check],
+  ['ATS', 'Send meeting notes and transcripts to your team.', Database],
+  ['Slack', 'Get notes and alerts in the channels where you work.', MessageCircle],
+];
 
-  // State
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+const faqs = [
+  'What is Firefiles AI Assistant?',
+  'How is Firefiles different from a regular AI notetaker?',
+  'Can I transcribe meetings in multiple languages?',
+  'How secure is my meeting data?',
+];
 
-  // Filters & Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [participantQuery, setParticipantQuery] = useState('');
-  const [datePreset, setDatePreset] = useState<DatePreset>('all');
-  const [sortOption, setSortOption] = useState<MeetingSortOption>('date_desc');
+function Button({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
+  return <Link className={`landing-button ${light ? 'landing-button-light' : ''}`} href="/register">{children}<ArrowRight size={16} strokeWidth={2.2} /></Link>;
+}
 
-  // Status & Modals
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [apiConnected, setApiConnected] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+function BrandMark() {
+  return <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>;
+}
 
-  // Health ping
-  useEffect(() => {
-    async function ping() {
-      try {
-        await checkHealth();
-        setApiConnected(true);
-      } catch {
-        setApiConnected(false);
-      }
-    }
-    ping();
-  }, []);
+function TranscriptMockup() {
+  return <div className="transcript-mockup"><div className="mockup-label"><Radio size={14} /> Transcript</div><div className="mockup-search"><Search size={14} /> Search</div>{[
+    ['C', 'Cate', '00:53', "There's some concern about onboarding. Clients feel it's not intuitive enough."], ['R', 'Rohan', '01:24', "Noted. We'll pass that to product. On the seating front, how are we doing with capacity?"], ['T', 'Tom', '01:47', ''], ['E', 'Emily', '02:19', ''],
+  ].map(([initial, name, time, copy], index) => <div className="transcript-line" key={name}><span className={`speaker speaker-${index}`}>{initial}</span><strong>{name}</strong><ChevronDown className="caret" size={12} /><a>{time}</a>{copy && <p>{copy}</p>}{index === 0 && <span className="bookmark"><BookmarkIcon /></span>}</div>)}</div>;
+}
 
-  // Compute ISO date range from datePreset
-  const { dateFrom, dateTo } = useMemo(() => {
-    const now = new Date();
-    if (datePreset === 'today') {
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      return { dateFrom: startOfToday.toISOString(), dateTo: now.toISOString() };
-    }
-    if (datePreset === '7days') {
-      const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return { dateFrom: past.toISOString(), dateTo: now.toISOString() };
-    }
-    if (datePreset === '30days') {
-      const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      return { dateFrom: past.toISOString(), dateTo: now.toISOString() };
-    }
-    return { dateFrom: undefined, dateTo: undefined };
-  }, [datePreset]);
+function BookmarkIcon() { return <span aria-hidden="true">▮</span>; }
 
-  // Load meetings
-  const fetchMeetings = useCallback(
-    async (isManualRefresh = false) => {
-      try {
-        if (isManualRefresh) setIsRefreshing(true);
-        else setLoading(true);
-        setError(null);
+function AppMockup() {
+  return <div className="app-mockup"><div className="app-toolbar"><Menu size={15} /><span><Hash size={12} /> Sales　/　Kickoff Call - Firefiles.ai x Acme</span><b><Mic2 size={10} /> REC</b><span className="toolbar-right"><Radio size={13} /> Soundbite　 <strong><Share2 size={13} /> Share</strong>　<Plus size={15} />　 <CircleUserRound size={16} /></span></div><div className="app-body"><h3>Kickoff Call - Firefiles.ai x Acme</h3><small><CircleUserRound size={13} /> Sarah Watts, +3　 Mar 15 · 11:30 AM</small><div className="app-tabs"><Monitor size={13} /> Default Notes　 <Sparkles size={13} /> <b>Customize</b> <span><Plus size={13} /> AI Apps　<MoreHorizontal size={14} /></span></div><h4>Overview</h4><p>The kickoff call served as an introduction between Fireflies.ai and Acme Inc. They aim to use Fireflies.ai primarily to streamline internal communications, automate sales call follow-ups, and improve meeting workflows.</p></div></div>;
+}
 
-        const res = await getMeetings({
-          page,
-          size: pageSize,
-          q: searchQuery || undefined,
-          participant: participantQuery || undefined,
-          date_from: dateFrom,
-          date_to: dateTo,
-          sort: sortOption,
-        });
+function FeatureCard({ title, children, tone = 'lavender' }: { title: string; children: React.ReactNode; tone?: string }) {
+  return <div className={`feature-card ${tone}`}><h3>{title}</h3><p>{children}</p><div className="card-visual"><div className="visual-window"><Sparkles size={14} /><span>Meeting summary</span><strong>Key takeaways</strong><div className="visual-summary"><i>Improve onboarding flow</i><i>Automate CRM updates</i><i>Share coaching notes</i></div></div></div></div>;
+}
 
-        setMeetings(res.items || []);
-        setTotal(res.total || 0);
-        setTotalPages(res.pages || 1);
-        setApiConnected(true);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to load meetings';
-        setError(msg);
-        setApiConnected(false);
-      } finally {
-        setLoading(false);
-        setIsRefreshing(false);
-      }
-    },
-    [page, pageSize, searchQuery, participantQuery, dateFrom, dateTo, sortOption]
-  );
-
-  // Fetch when dependencies change
-  useEffect(() => {
-    fetchMeetings();
-  }, [fetchMeetings]);
-
-  // Reset page to 1 when filters change
-  const handleSearchChange = (q: string) => {
-    setSearchQuery(q);
-    setPage(1);
-  };
-
-  const handleParticipantChange = (p: string) => {
-    setParticipantQuery(p);
-    setPage(1);
-  };
-
-  const handleDatePresetChange = (preset: DatePreset) => {
-    setDatePreset(preset);
-    setPage(1);
-  };
-
-  const handleSortChange = (sort: MeetingSortOption) => {
-    setSortOption(sort);
-    setPage(1);
-  };
-
-  const handleResetFilters = () => {
-    setSearchQuery('');
-    setParticipantQuery('');
-    setDatePreset('all');
-    setSortOption('date_desc');
-    setPage(1);
-  };
-
-  const isFiltered = Boolean(
-    searchQuery.trim() || participantQuery.trim() || datePreset !== 'all' || sortOption !== 'date_desc'
-  );
-
-  // Deletion
-  const handleDeleteMeeting = async (id: string) => {
-    try {
-      await deleteMeeting(id);
-      showToast('Meeting deleted successfully', 'info');
-      // Refresh list
-      fetchMeetings();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete meeting';
-      showToast(msg, 'error');
-    }
-  };
-
-  // Quick stats computed from current view
-  const stats = useMemo(() => {
-    let totalSec = 0;
-    const participantsSet = new Set<string>();
-
-    meetings.forEach((m) => {
-      if (m.duration_sec) totalSec += m.duration_sec;
-      m.participants?.forEach((p) => {
-        if (p.name) participantsSet.add(p.name);
-      });
-    });
-
-    const hours = (totalSec / 3600).toFixed(1);
-    return {
-      totalHours: hours,
-      uniqueParticipants: participantsSet.size,
-    };
-  }, [meetings]);
-
-  return <RequireAuth>
-    <div className="min-h-screen bg-zinc-950 flex flex-col lg:flex-row text-zinc-100 antialiased">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        totalMeetings={total}
-        apiConnected={apiConnected}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header */}
-        <Header
-          onOpenSidebar={() => setIsSidebarOpen(true)}
-          onNewMeeting={() => setIsCreateModalOpen(true)}
-          onRefresh={() => fetchMeetings(true)}
-          isRefreshing={isRefreshing}
-        />
-
-        {/* Dashboard Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Hero Banner / Title Area */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-zinc-800/80">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2.5">
-                <span>Meetings Library</span>
-                <span className="text-xs px-2.5 py-0.5 font-medium rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                  {total} {total === 1 ? 'Meeting' : 'Meetings'}
-                </span>
-              </h1>
-              <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-                Search, filter, and review smart meeting notes, transcripts, and action items.
-              </p>
-            </div>
-
-            {/* Quick action button on wide screens */}
-            <div className="hidden sm:flex items-center gap-3">
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-md shadow-violet-500/20 transition-all active:scale-95"
-              >
-                <PlusIcon className="w-4 h-4" />
-                <span>New Meeting</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
-                <FolderIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-zinc-400">Total Recorded</p>
-                <p className="text-lg font-bold text-white">{total} Meetings</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                <ClockIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-zinc-400">Page Audio Duration</p>
-                <p className="text-lg font-bold text-white">{stats.totalHours} hrs</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                <UsersIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-zinc-400">Active Participants</p>
-                <p className="text-lg font-bold text-white">{stats.uniqueParticipants} Members</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters & Search Control Bar */}
-          <section
-            aria-label="Meeting search and filters"
-            className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 shadow-sm space-y-3"
-          >
-            <MeetingFilters
-              searchQuery={searchQuery}
-              onSearchChange={handleSearchChange}
-              participantQuery={participantQuery}
-              onParticipantChange={handleParticipantChange}
-              datePreset={datePreset}
-              onDatePresetChange={handleDatePresetChange}
-              sortOption={sortOption}
-              onSortChange={handleSortChange}
-              onResetFilters={handleResetFilters}
-              isFiltered={isFiltered}
-            />
-          </section>
-
-          {/* Main List / State Rendering */}
-          <section aria-label="Meetings list" className="space-y-4">
-            {loading ? (
-              <MeetingLoadingSkeleton count={5} />
-            ) : error ? (
-              <MeetingErrorState
-                message={error}
-                onRetry={() => fetchMeetings(true)}
-              />
-            ) : meetings.length === 0 ? (
-              isFiltered ? (
-                <MeetingEmptyState
-                  type="no-results"
-                  onAction={handleResetFilters}
-                />
-              ) : (
-                <MeetingEmptyState
-                  type="no-meetings"
-                  onAction={() => setIsCreateModalOpen(true)}
-                />
-              )
-            ) : (
-              <MeetingList
-                meetings={meetings}
-                total={total}
-                currentPage={page}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                onPageChange={(p) => setPage(p)}
-                onDeleteMeeting={handleDeleteMeeting}
-              />
-            )}
-          </section>
-        </main>
-      </div>
-
-      {/* Create Meeting Modal */}
-      <CreateMeetingModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onMeetingCreated={() => {
-          fetchMeetings();
-        }}
-      />
-    </div>
-  </RequireAuth>;
+export default function LandingPage() {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  return <main className="landing-page">
+    <div className="announcement"><b>NEW</b> Meet Email Assistant: Your inbox triaged and replies auto-drafted. <u>See Now</u><button aria-label="Dismiss announcement"><X size={15} /></button></div>
+    <header className="landing-header"><Link className="brand" href="/"><BrandMark /> firefiles.ai</Link><nav><a>Product <ChevronDown size={12} /></a><a>Solutions <ChevronDown size={12} /></a><a>Integration <ChevronDown size={12} /></a><a>Resources <ChevronDown size={12} /></a><a>Enterprise</a><a>Pricing</a></nav><div className="header-actions"><Link href="/login">Login</Link><Link className="demo-link" href="/login">Request Demo</Link><Button>Get Started</Button></div><button className="menu-button" aria-label="Open menu"><Menu size={20} /></button></header>
+    <section className="hero hero-dark"><div className="hero-copy"><h1>The #1 AI Assistant For<br />Your Meetings</h1><p>Transcribe, summarize, search, and analyze all your team conversations.</p><div><Button>Get Started</Button><Button light>Request Demo</Button></div></div><div className="hero-proof"><span><b>G</b> Rated 4.8 / 5</span><span className="stars-rating">★ ★ ★ ★ <i>★</i></span><span><LockKeyhole size={12} /> GDPR, SOC2, More</span></div><div className="hero-product"><AppMockup /></div><div className="stars" /></section>
+    <section className="proof-band"><div className="browser-card"><div className="browser-top">●　●　●　 <span>firefiles.ai</span></div><div className="browser-content"><div className="notes"><h3>Notes</h3><b>■　Use Case &amp; Requirements: 00:00 - 10:12</b><p>•　Acme wants their sales team more present during calls</p><p>•　They want to automate data entry in HubSpot CRM</p><p>•　Team managers want to use Fireflies to provide call coaching</p><b>■　Metrics &amp; Goals: 10:15 - 20:43</b></div><div className="comments"><b>Chris　⌄　<a>01:47</a></b><p>I&apos;ll prepare a follow-up and reach out after the meeting.</p><b>Sarah　⌄　<a>02:19</a></b></div></div></div><p className="eyebrow">USED ACROSS 1 MILLION+ COMPANIES</p><div className="logos"><b>Λ AssemblyAI</b><b>EMAAR</b><b>◉ Leonardo.Ai</b><b>▣ Penn</b></div></section>
+    <section className="split-section"><div className="section-copy"><h2>High Quality Meeting<br /><em>Transcription &amp; Recording</em></h2><Button>Get Started</Button><div className="stats-grid"><div><b><BarChart3 /><br />95% Accurate</b><p>Fireflies is the industry leader in transcription accuracy.</p></div><div><b><Globe2 /><br />100+ Languages</b><p>Transcribe meetings in English, Spanish, French, &amp; several others.</p></div><div><b><UsersRound /><br />Speaker Recognition</b><p>Fireflies identifies different speakers in meetings and audio files.</p></div><div><b><Zap /><br />Auto-Language Detection</b><p>Automatically switch languages from meeting to meeting with ease.</p></div></div></div><TranscriptMockup /></section>
+    <section className="dark-showcase"><div className="center-copy"><h2>Comprehensive <em>AI Summaries</em></h2><p>Get detailed notes, action items, and customized summaries instantly<br />after every meeting.</p><Button>Get Started</Button><div className="pills"><b>Overview</b><b>Bullet Points</b><b>Action Items</b><b>Custom Notes</b></div></div><AppMockup /></section>
+    <section className="capture-section"><h2><em>Capture</em> Meetings <em>Anywhere</em> &amp; Anytime</h2><div className="capture-grid"><FeatureCard title="AI Note Taker Bot"><b>Invite fred@fireflies.ai</b> to a live meeting or have it autojoin your calendar meetings to record, transcribe, and summarize.</FeatureCard><FeatureCard title="Chrome Extension">Automatically record your Google Meet calls and get <u>real-time transcripts.</u></FeatureCard></div><div className="mini-features"><div><b><Smartphone /><br />Mobile App</b><p>Transcribe and summarize in-person conversation with the mobile app.</p></div><div><b><Monitor /><br />Desktop App</b><p>Transcribe and summarize your calls with the desktop app.</p></div><div><b><Upload /><br />Dialers &amp; API</b><p>Transcribe calls from Aircall, Ringcentral and other dialers.</p></div></div></section>
+    <section className="search-section"><h2><em>Remember</em> Every Conversation<br />With <em>AI Powered Search</em></h2><p>Fireflies gives you perfect memory after every conversation.</p><div className="search-cards"><FeatureCard title="Meeting Search" tone="pink">Remember what was discussed on calls several months ago down to the specific sentence and timestamp.</FeatureCard><FeatureCard title="AskFred" tone="mint">Let Fred review your meetings and come back with answers to any question you have.</FeatureCard></div></section>
+    <section className="live-section"><div className="live-card"><div className="app-icons"><Sparkles size={16} /><Mic2 size={16} /><MessageCircle size={16} /><Zap size={16} /></div><h2>Get Real-Time Suggestions, Coaching,<br />And Answers During Meetings.</h2><p>Meet the new Live Assist that can provide real-time<br />suggestions, coaching, and answers during your meetings.</p><Button>Explore Live Assist</Button></div></section>
+    <section className="split-section analytics"><div className="section-copy"><h2>Drive Insights With<br /><em>Conversation Intelligence</em></h2><p>Detailed analytics to help you uncover insights across every conversation.</p>{[['Speaker Talk-time', BarChart3], ['AI Filters', SlidersHorizontal], ['Sentiment Analysis', Radio], ['Topic Trackers', Hash]].map(([label, Icon], i) => <div className={`accordion ${i === 3 ? 'active' : ''}`} key={label as string}><b><Icon size={15} />{label as string}</b><ChevronDown size={14} />{i === 3 && <p>Automatically identify key topics and track relevant keywords discussed in your meetings.</p>}</div>)}</div><TranscriptMockup /></section>
+    <section className="integrations"><h2>Integrate <em>Fireflies</em> With Your Favorite<br /><em>Work Tools</em></h2><p>Integrate Fireflies with your favorite Work Tools</p><div className="integration-grid">{integrations.map(([title, copy, Icon]) => <div key={String(title)}><Icon size={24} /><h3>{title}</h3><p>{copy}</p></div>)}</div><div className="integration-visual"><AppMockup /></div></section>
+    <section className="security"><div><h2>Enterprise-Grade <em>Security</em> <LockKeyhole size={22} /></h2><p>Fireflies is the preferred platform for CIOs across the Fortune 500, offering robust admin controls and stringent security protocols.</p></div><Button>Get Started</Button><div className="security-grid">{['SOC 2 Type II', 'GDPR', 'HIPAA Compliant', 'Zero Data Retention', 'Private Storage', 'Customer Own Their Data'].map((item, i) => <div key={item}><span className={`security-icon s${i}`}>{i < 3 ? <ShieldCheck size={18} /> : i === 3 ? <LockKeyhole size={18} /> : <Database size={18} />}</span><h3>{item}</h3><p>Rigorous data protection and privacy standards for your organization’s data.</p></div>)}</div></section>
+    <section className="capabilities"><p>...and many more capabilities</p><div className="capability-grid">{[['Expand Summary Notes', SlidersHorizontal], ['Download Meetings', Download], ['Soundbites', Radio], ['Channels', Hash], ['User Groups', UsersRound], ['Comments & Bookmarks', MessageCircle]].map(([item, Icon]) => <div key={item as string}><Icon size={18} /><h3>{item as string}</h3><p>Expand specific meeting details and keep your team moving forward.</p></div>)}</div></section>
+    <section className="faq"><h2>Frequently Asked Questions</h2>{faqs.map((faq, i) => <button key={faq} onClick={() => setOpenFaq(openFaq === i ? null : i)}><b>{faq}</b><span>{openFaq === i ? '−' : '+'}</span>{openFaq === i && <p>Firefiles helps teams record, transcribe, search, and understand every conversation in one place.</p>}</button>)}</section>
+    <footer><div className="footer-hero"><h2>Unlock The Knowledge Buried<br />Inside Your Conversations</h2><Button>Try Fireflies For Free</Button></div><div className="footer-links"><div><b>Product</b><p>Features<br />Notetaker<br />AI Assistant<br />Daily Brief<br />Email Assistant</p></div><div><b>Use Cases</b><p>Sales<br />Recruiting<br />Marketing<br />Collaboration<br />Engineering</p></div><div><b>Integrations</b><p>All integrations<br />Video conferencing<br />Audio recording<br />CRM<br />Dialers</p></div><div><b>Company</b><p>About<br />Careers<br />Partnership<br />HIPAA<br />Privacy Policy</p></div></div></footer>
+    <button className="chat-button" aria-label="Open chat"><MessageCircle size={22} strokeWidth={2.2} /></button>
+  </main>;
 }

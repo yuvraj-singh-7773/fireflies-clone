@@ -3,14 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  FlameIcon,
   FolderIcon,
-  DocumentTextIcon,
-  TagIcon,
-  ChartBarIcon,
-  SpeakerWaveIcon,
-  Squares2X2Icon,
-  Cog6ToothIcon,
   XMarkIcon,
   SparklesIcon,
 } from '../ui/icons';
@@ -32,42 +25,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user, logout } = useAuth();
   const navItems = [
     {
-      name: 'Meetings Library',
-      href: '/',
+          name: 'Meetings Library',
+          href: '/dashboard',
       icon: FolderIcon,
       active: true,
       badge: totalMeetings > 0 ? totalMeetings.toString() : undefined,
-    },
-    {
-      name: 'Transcripts',
-      href: '#',
-      icon: DocumentTextIcon,
-      active: false,
-      tag: 'Coming soon',
-    },
-    {
-      name: 'Topics & Channels',
-      href: '#',
-      icon: TagIcon,
-      active: false,
-    },
-    {
-      name: 'Analytics',
-      href: '#',
-      icon: ChartBarIcon,
-      active: false,
-    },
-    {
-      name: 'Soundbites',
-      href: '#',
-      icon: SpeakerWaveIcon,
-      active: false,
-    },
-    {
-      name: 'Integrations',
-      href: '#',
-      icon: Squares2X2Icon,
-      active: false,
     },
   ];
 
@@ -91,17 +53,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Top Branding */}
         <div>
           <div className="h-16 flex items-center justify-between px-5 border-b border-zinc-850">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 via-indigo-600 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-                <FlameIcon className="w-5 h-5 text-white" />
-              </div>
+            <Link href="/dashboard" className="flex items-center gap-2.5 group">
+              <span className="brand-mark group-hover:scale-105 transition-transform" aria-hidden="true"><i /><i /><i /><i /></span>
               <div className="flex flex-col">
-                <span className="font-bold text-base tracking-tight text-white flex items-center gap-1.5">
-                  Firefiles
-                  <span className="text-[10px] px-1.5 py-0.5 font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded">
-                    PRO
-                  </span>
-                </span>
+                <span className="font-bold text-base tracking-tight text-white">firefiles.ai</span>
                 <span className="text-[11px] text-zinc-400 font-medium -mt-0.5">AI Meeting Assistant</span>
               </div>
             </Link>
@@ -161,11 +116,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {item.badge}
                     </span>
                   )}
-                  {item.tag && (
-                    <span className="text-[10px] px-1.5 py-0.2 font-medium bg-zinc-850 text-zinc-400 rounded">
-                      {item.tag}
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -174,15 +124,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom Section */}
         <div className="p-3 border-t border-zinc-850 space-y-2">
-          {/* Settings link */}
-          <Link
-            href="#"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors"
-          >
-            <Cog6ToothIcon className="w-4 h-4 text-zinc-400" />
-            <span>Workspace Settings</span>
-          </Link>
-
           {/* Backend Connection Indicator */}
           <div className="px-3 py-2 rounded-lg bg-zinc-900/60 border border-zinc-850 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
